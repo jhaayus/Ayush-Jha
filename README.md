@@ -1,2 +1,682 @@
 # Ayush-Jha
-EDA and Predictive Analytics 
+---
+title: "My Code On Attrition"
+author: "Ayush Jha"
+date: "December 13, 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(error = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(lattice)
+library(ggthemes)
+library(plyr)
+library(corrplot)
+library(forcats)
+library(gridExtra)
+library(stringr)
+library(caret)
+library(formattable)
+library(rpart)
+library(rpart.plot)
+library(Deducer)
+library(Boruta)
+library(DMwR)
+library(DT)
+library(ROCR)
+library(dummy)
+library(caretEnsemble)
+library(caret)
+```
+
+```{r}
+setwd("D:/My Datasets Library/ibm-hr-analytics-employee-attrition-performance")
+```
+
+
+##We have been provided with the HR employee attrition data and build a model to predict the attrition.
+#1.Data Load
+#importing data using read_csv function
+```{r}
+library(readr)
+```
+```{r}
+myds <- read.csv("D:/My Datasets Library/ibm-hr-analytics-employee-attrition-performance/WA_Fn-UseC_-HR-Employee-Attrition.csv",header=TRUE,stringsAsFactors = TRUE)
+```
+
+```{r}
+View(myds)
+```
+
+
+##2.Data Sanity Check
+####looking at summary 
+
+
+```{r}
+summary.data.frame(myds)
+```
+
+####another way to look into summary 
+
+```{r}
+summary(myds)
+dim(myds)
+```
+
+
+##3. Check the missing value (if any)
+
+
+```{r}
+sum(is.na(myds))
+```
+####we get no presence of missing value or NA value. 
+##4. Chekcing Variable types
+```{r}
+str(myds)
+```
+
+
+####we see how many rows and types are there. All are purely either intergers or character. 
+
+##5.Removing Unwanted rows
+####*From this overview we find that columns like 
+####*over18,employeecount,standardhours* are not informative,so we removed it.
+###we count number of rows
+```{r}
+cat("No of Columns before removing:",ncol(myds),sep="/n")
+```
+####Removed lines
+```{r}
+myds1=myds[,!(names(myds) %in% c('Over18','EmployeeCount','StandardHours'))]
+```
+####Count lines 
+```{r}
+cat("No of Columns after removing:",ncol(myds),sep="/n")
+```
+
+
+##6.Removing rows with missing data (just in case we need to do)
+####removing the rows with missing values
+```{r}
+nrow(data)
+```
+
+```{r}
+data<- na.omit(data) ## removes the missing values
+```
+```{r}
+nrow(data)
+```
+
+####We dont have missing values 
+#### If we have to do missing value treatment:
+#### mean imputation
+#### median imputation
+#### mode imputation
+####regression imputation
+
+###installing caret packï..Age
+####if only specific columns you want to keep .
+
+```{r}
+myds3 <- data.frame(Attrition=rnorm(100)>0,OverTime=rnorm(100)>0)
+head(myds)
+```
+
+
+#####testing true flase for variable being numeric 
+```{r}
+sapply(myds, is.numeric)
+```
+
+##7 changing values to numerica value from text to make it easy to use.
+
+
+```{r}
+myds$Attrition <- revalue(myds$Attrition, c("Yes"= 1))
+```
+```{r}
+myds$Attrition <- revalue(myds$Attrition, c("No"= 0))
+```
+```{r}
+head(myds$Attrition)
+```
+
+
+```{r}
+myds$OverTime <- revalue(myds$OverTime , c("Yes"= 1))
+```
+```{r}
+myds$OverTime  <- revalue(myds$OverTime , c("No"= 0))
+```
+```{r}
+head(myds$OverTime )
+```
+
+
+
+##8.
+#### very important, after turning value to numeric , change coloumn category also to numeric
+
+```{r}
+myds$Attrition <- as.numeric(myds$Attrition)
+```
+
+
+```{r}
+myds$OverTime <- as.numeric(myds$OverTime)
+```
+
+
+####some extra ways to convert values to numeric 
+```{r}
+#myds$Attrition [myds$Attrition == "Yes"] <- 1
+#myds$Attrition [myds$Attrition == "No"] <- 0
+```
+
+
+
+
+##8 lets first see attriation percentï..Age rate 
+```{r}
+round((prop.table(table(myds$Attrition)))*100,2)
+```
+
+
+###this shows 16% attriation oocured yet.
+
+##Exploratory Data Analysis
+###we will do bivariae and univariate analysis to see variables.
+##9
+###Correlation Plot 
+
+
+
+```{r}
+numeric=myds%>% dplyr::select(ï..Age,Attrition,DailyRate,DistanceFromHome,OverTime,HourlyRate,MonthlyIncome,MonthlyRate,NumCompaniesWorked,PercentSalaryHike,YearsAtCompany,YearsInCurrentRole,YearsSinceLastPromotion,YearsWithCurrManager,TotalWorkingYears,TrainingTimesLastYear,StockOptionLevel)
+corrplot(cor(numeric),method="circle",type="upper")
+```
+
+
+```{r}
+numeric=myds%>% dplyr::select(ï..Age,Attrition,DailyRate,DistanceFromHome,OverTime,HourlyRate,MonthlyIncome,MonthlyRate,NumCompaniesWorked,PercentSalaryHike,YearsAtCompany,YearsInCurrentRole,YearsSinceLastPromotion,YearsWithCurrManager,TotalWorkingYears,TrainingTimesLastYear,StockOptionLevel)
+corrplot(cor(numeric),method="number",type="upper")
+```
+
+
+```{r}
+numeric=myds%>% dplyr::select(ï..Age,Attrition,DistanceFromHome,OverTime,HourlyRate,MonthlyIncome,MonthlyRate,NumCompaniesWorked,PercentSalaryHike,YearsAtCompany,YearsInCurrentRole,YearsSinceLastPromotion,YearsWithCurrManager,TotalWorkingYears,TrainingTimesLastYear)
+corrplot(cor(numeric),method="number",type="full")
+```
+
+####for different view
+```{r}
+numeric=myds%>% dplyr::select(ï..Age,Attrition,DistanceFromHome,OverTime,HourlyRate,MonthlyIncome,MonthlyRate,NumCompaniesWorked,PercentSalaryHike,YearsAtCompany,YearsInCurrentRole,YearsSinceLastPromotion,YearsWithCurrManager,TotalWorkingYears,TrainingTimesLastYear)
+col<- colorRampPalette(c("red", "white", "blue"))(20)
+corrplot(cor(numeric),method="number",type="upper", order="hclust",col=col)
+```
+
+
+##10. ggplotting - DISTRUBUTION OF ï..Age
+
+```{r}
+ggplot(numeric,aes(ï..Age))+geom_histogram(binwidth=5,aes(y=..count..),fill="green4")+theme_few()+theme(legend.position="none",plot.title = element_text(hjust=0.5,size=15))+labs(x="ï..Age",y="Count",title="Distribution of ï..Age")
+```
+
+
+##11. Plotting for ï..Age distribution density
+```{r}
+ggplot(myds, aes(x = ï..Age)) +
+  geom_density(fill = "red") +
+  ggtitle("ï..Age density Distribution")
+```
+####From the plot,we understand that median ï..Age is between 30 to 40 years and maximum is 60 years.
+
+##12 ï..Age distribution of attrition
+```{r}
+myds %>% filter(Attrition == "1") %>% ggplot(aes(ï..Age))+
+  geom_histogram(binwidth=5,aes(y=round(((..count..)/sum(..count..))*100,2)),fill="black")+
+  theme_few()+theme(legend.position="none",plot.title = element_text(hjust=0.5,size=15))+
+  labs(x="ï..Age",y="Percentï..Age",title="ï..Age distribution of people who leave")+scale_y_continuous(limits=c(0,30),breaks=seq(0,30,2))+
+  scale_x_continuous(limits=c(15,60),breaks=seq(15,60,5))
+```
+
+##13 Boxplot for gender vs salary
+```{r}
+ggplot(myds,aes(Gender,MonthlyIncome,fill=Gender))+geom_boxplot()+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=10))+labs(x="Gender",y="Salary",title="Salary with Gender")+scale_fill_canva(palette="Neon and bold")+coord_flip()
+```
+
+
+```{r}
+ggplot(myds,aes(Attrition,MonthlyIncome,fill=factor(Attrition)))+geom_boxplot()+theme_few()+theme(legend.position="Bottom",plot.title=element_text(hjust=0.5,size=10))+labs(x="Attrition",y="Salary",title="Salary with Gender")+scale_fill_canva(palette="Neon and bold")
+```
+
+
+```{r}
+ggplot(myds,aes(Gender,MonthlyIncome,fill=factor(MaritalStatus)))+geom_boxplot()+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=10))+labs(x="Gender",y="Salary",title="Salary with Gender")+scale_fill_canva(palette="Neon and bold")+coord_flip()
+```
+
+
+####We can see less salary is important factor 
+
+##14 Attrition Vs Marital Status
+```{r}
+ggplot(myds,aes(Gender,..count..,fill=factor(MaritalStatus)))+geom_bar(position=position_dodge())+theme_few()+theme(legend.position="bottom",plot.title=element_text(hjust=0.5,size=16))+labs(title="Attrition Count Vs Marital Status")
+```
+
+#### we can see easily married male have higher attriation number, and after that single.Overall ,its same for all. 
+
+```{r}
+ggplot(data=myds,mapping=aes(x=Attrition,y=MaritalStatus,fill=factor(Attrition)))+geom_boxplot()+theme_few()+theme(legend.position="Bottom",plot.title=element_text(hjust=0.5,size=10))+labs(x="Attrition",y="Martial Status",title="Attrition Count Vs Marital Status")+scale_fill_canva(palette="Neon and bold")
+```
+
+
+```{r}
+ggplot(data=myds,mapping=aes(x=Attrition,y=MaritalStatus,fill=factor(Attrition)))+geom_boxplot()+labs(x="Attrition",y="Martial Status",title="Attrition Count Vs Marital Status")+coord_flip()
+```
+
+####this boxplot is not good but limits shows how martial status have difference. 
+
+##15 Histogram - Monthlyincome vs Count of Employees
+```{r}
+ggplot(myds, aes(MonthlyIncome) ) +
+  geom_histogram(binwidth=500,color="Black")
+```
+
+#### we can see $2500 is the highest number of emplyees gettingsalary 
+
+##16 to see make it easy we can se density graph too
+```{r}
+ggplot(myds, aes(MonthlyIncome)) +
+  geom_density()
+```
+
+
+```{r}
+ggplot(data=myds) +
+  geom_histogram( aes(MonthlyIncome, ..density..)) +
+  geom_density( aes(MonthlyIncome, ..density..) ) +
+  geom_rug( aes(MonthlyIncome) )
+```
+
+
+##17 gender vs monthly income 
+```{r}
+ggplot(myds,aes(Gender,MonthlyIncome,fill=Gender))+geom_boxplot()+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=10))+labs(x="Gender",y="Salary",title="Salary with Gender")+scale_fill_canva(palette="Neon and bold")+coord_flip()
+```
+
+
+##18 identifying number of departsments 
+
+```{r}
+cat("There are",length(unique(myds$Department)),"unique departments in the dataset")
+```
+
+##19.plotting ggplot with Dpeartment Vs Percentï..Age of Attrition
+```{r}
+ggplot(myds,aes(x=Department,group=Attrition))+geom_bar(aes(y=..prop..,fill=factor(..x..)),stat="count")+facet_grid(~Attrition)+theme(axis.text.x=element_text(angle=45,vjust=0.5),legend.position="none",plot.title=element_text(size=16,hjust=0.5))+labs(x="Department",y="Percentï..Age",title="Attrition  % Vs Department")+ geom_text(aes(label = scales::percent(..prop..), y = ..prop.. ),stat= "count",vjust =-.5) +scale_x_discrete(labels=function(x) str_wrap(x,width=10))+scale_fill_brewer(palette="Set2")
+```
+
+##20 Attrition Vs Distance From Home
+```{r}
+ggplot(myds,aes(x=DistanceFromHome,group=Attrition))+geom_density(aes(fill=factor(Attrition),alpha=0.5))+theme_few()+theme(legend.position="bottom",plot.title=element_text(hjust=0.5,size=16))+labs(x="Distance from Home",title="Attrition Vs Distance From Home")+scale_fill_brewer(palette="Dark2")
+```
+
+##21 Plotting table for Joblevel vs Attrition
+
+```{r}
+plottable1=table(myds$Attrition,myds$JobLevel)
+barplot(plottable1, main="Employees left vs Job Level", xlab="JobLevel",col=c("Blue","Yellow"),legend=rownames(plottable1),beside = TRUE) 
+```
+
+##22 working line 
+```{r}
+ggplot(myds) + geom_density(aes(x = DistanceFromHome, fill = factor(Attrition)), alpha = 0.2)
+```
+
+
+
+##23 #Attrition VS Marital Status
+
+```{r}
+table_mar<-table(myds$MaritalStatus, myds$Attrition)
+chisq.test(table_mar)
+```
+
+###As p-value is less than alpha, attrition depends on the marital status of employees.
+
+##24 identifying Travel Frequency
+```{r,fig.width=10,fig.height=7}
+cat("There are",length(unique(myds$Department)),"unique departments in the dataset")
+```
+ 
+##25 plotting ggplot with Dpeartment Vs Percentï..Age of Attrition
+```{r}
+ggplot(myds, aes(x = EnvironmentSatisfaction, group = Attrition)) + geom_bar(
+  aes(y = ..prop.., fill = factor(..x..)),
+  stat = "count",
+  position = position_dodge(),
+  colour = "black"
+) + scale_fill_manual(values = c("#999999", "#E69F00")) + facet_grid( ~
+                                                                        Attrition) + theme(
+                                                                          axis.text = element_text(
+                                                                            angle = 90,
+                                                                            vjust = 10,
+                                                                            hjust = 10
+                                                                          ),
+                                                                          legend.position = "Bottom",
+                                                                          plot.title = element_text(size = 16, hjust = 0.5)
+                                                                        ) + labs(x = "EnvironmentSatisfaction", y = "Percentï..Age", title = "Attrition  % Vs EnvironmentSatisfaction") + geom_text(aes(label = scales::percent(..prop..), y = ..prop..),
+                                                                                                                                                                                                 stat = "count",
+                                                                                                                                                                                                 vjust = -.5) + scale_x_discrete(
+                                                                                                                                                                                                   labels = function(x)
+                                                                                                                                                                                                     str_wrap(x, width = 10)
+                                                                                                                                                                                                 ) + scale_fill_brewer(palette = "Set3")
+```
+
+
+##26 Attrition Vs Payrates
+####this is because those who paid less might leave early 
+```{r}
+g1=ggplot(myds,aes(Attrition,DailyRate,fill=factor(Attrition)))+geom_boxplot()+theme_few()+theme(plot.title=element_text(hjust=0.5),legend.position="bottom")+scale_y_continuous(limits=c(100,1500),breaks=seq(100,1500,100))+coord_flip()+scale_fill_canva(palette="Fresh and bright")+labs(title="Attrition Vs Daily Wï..Ages")
+```
+
+```{r}
+g2=ggplot(myds,aes(Attrition,DailyRate,fill=factor(Attrition)))+geom_boxplot()+theme_few()+theme(plot.title=element_text(hjust=0.5),legend.position="bottom")+scale_y_continuous(limits=c(100,1500),breaks=seq(100,1500,100))+coord_flip()+scale_fill_canva(palette="Fresh and bright")+labs(title="Attrition Vs Daily Wï..Ages")
+```
+```{r}
+grid.arrange(g1,g2,nrow=2)
+```
+
+
+```{r}
+g2=ggplot(myds,aes(Attrition,MonthlyIncome,fill=factor(Attrition)))+geom_boxplot()+theme_few()+theme(plot.title=element_text(hjust=0.5),legend.position="bottom")+coord_flip()+scale_fill_canva(palette="Fresh and bright")+labs(title="Attrition Vs Monthly Income")
+```
+
+```{r}
+grid.arrange(g1,g2,nrow=2)
+```
+
+
+##27 Boxplotting for Attrition vs dailyrate 
+boxplot(myds$Attrition~myds$DailyRate,col=rainbow(3),notch=FALSE)
+
+ggplot(myds,aes(Attrition,HourlyRate,fill=factor(Attrition)))+geom_boxplot()+theme_few()+theme(plot.title=element_text(hjust=0.5),legend.position="bottom")+coord_flip()+labs(title="Attrition Vs Hourly Wï..Ages")
+
+##28 Attrition VS Monthly Income
+```{r}
+t.test(myds$MonthlyIncome~myds$Attrition)
+```
+
+##As t.test shows, attrition is highly dependent on monthly income.
+
+##29 Attrition - log(Monthly Income)
+```{r}
+ggplot(myds, aes(x =  log(MonthlyIncome), fill =Attrition, 
+                    colour = Attrition, alpha = .3)) +
+  geom_density() + ggtitle("")
+```
+
+
+##30 YearsAtCompany - Attrition 
+```{r}
+ggplot(myds, aes(x = YearsAtCompany, fill = factor(Attrition), 
+                    colour = Attrition, alpha = .3)) +
+  geom_density()
+```
+
+```{r}
+t.test(myds$YearsAtCompany~myds$Attrition)
+```
+
+###T.test shwows .attrition is dependent on Years at company
+
+
+##34plotting of distance travel vs Attrition
+```{r}
+ggplot(myds, aes(x = ï..Age, 
+                    fill = factor(BusinessTravel), 
+                    colour = BusinessTravel, alpha = .3)) + 
+  geom_density()
+```
+
+##35 again plotting ofattrition vs distance travel  
+```{r}
+ggplot(myds,aes(BusinessTravel,fill=factor(Attrition)))+geom_bar(stat="count",aes(y=..count..),position=position_dodge())+theme_few()+theme(legend.position="bottom",plot.title=element_text(hjust=0.5,size=16),axis.text.x = element_text(angle=90))+labs(x="Travel Frequency",y="Count",title="Attrition Vs Business Travel")
+```
+
+
+##36 Attrition Vs Hourly Rate 
+```{r}
+ggplot(myds,aes(Attrition,HourlyRate,fill=factor(Attrition)))+geom_boxplot()+theme_few()+theme(plot.title=element_text(hjust=0.5),legend.position="bottom")+coord_flip()+labs(title="Attrition Vs Hourly Wï..Ages")
+```
+
+
+##37 Percentï..Age of salary hike
+
+```{r}
+ggplot(myds,aes(PercentSalaryHike,..count..,fill=factor(Attrition)))+geom_histogram(binwidth=5)+theme_few()+theme(plot.title=element_text(hjust=0.5),legend.position="none")+labs(title="Histogram of SalaryHike")+scale_y_continuous(limits=c(0,1500),breaks=seq(0,1500,150))
+```
+
+
+##38 plotting again for years at company vs percentï..Age of hike employees recieve
+```{r}
+myds %>% 
+ggplot(aes(YearsAtCompany,PercentSalaryHike,size=PercentSalaryHike))+geom_point(color="purple",alpha=0.5)+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=16))+labs(title="Years at Company Vs Percentï..Age of Hike")
+```
+
+
+#### Observation : Here too we see no relation between the two factors.Even People who have lesser year of stint at the company have received maximum hike.
+
+##39 Which role is paid more?
+#####Precaution : load Stringr if str_wrap error comes up
+```{r}
+temp=myds %>% group_by(JobRole) %>% summarise(salary=median(MonthlyIncome)) %>% arrange(desc(salary))
+ggplot(temp,aes(factor(JobRole,levels=(JobRole)),salary))+geom_bar(stat="identity",fill="gold4")+coord_polar()+labs(x="Job Role",y="Median Salary",title="Who gets more??")+theme_few()+theme(axis.text.x=element_text(vjust=300),plot.title=element_text(hjust=0.5,size=16),axis.text.y=element_blank())+scale_x_discrete(labels=function(x)str_wrap(x,width=10))
+```
+
+####* Manï..Ager,Research director,Healthcare representative have higher median salary whereas HR,Sales rep have been paid a lower salary
+
+##40 Education,EducationField: 
+####load forcat
+```{r}
+temp= myds %>% mutate(Education=factor(Education)) %>% mutate(Education=fct_recode(Education,'Below College'='1','College'='2','Bachelor'='3','Master'='4','Doctor'='5'))
+```
+
+```{r}
+ggplot(temp,aes(Education,fill=factor(Attrition)))+geom_bar(stat="count",aes(y=..count..),position=position_dodge())+theme_few()+theme_few()+theme(legend.position="bottom",plot.title=element_text(hjust=0.5,size=16),axis.text.x = element_text(angle=90))+labs(x="Education Level",y="Count",title="Trend of Attrition with Education Level")+scale_fill_canva(palette="Golden afternoon")
+```
+
+
+
+###Observation : Mostly bachelors education holder and least by Doctor but cant draw clear consluion, so we will look at education field too.
+
+ggplot(temp,aes(Education,fill=factor(Attrition)))+geom_bar(stat="count",aes(y=..count..),position=position_dodge())+theme_few()+theme_few()+theme(legend.position="bottom",plot.title=element_text(hjust=0.5,size=16),axis.text.x = element_text(angle=90))+labs(x="Education Level",y="Count",title="Education levels and field of education")+scale_fill_canva(palette="Unique and striking")+facet_grid(~EducationField)
+
+
+###Observation: Life science and medical contribute much to datasets and least by Hr. 
+
+##41 Number of companies worked:
+
+```{r}
+temp2 = myds %>% group_by(Attrition,NumCompaniesWorked) %>% tally(sort=TRUE)
+```
+
+```{r}
+ggplot(temp,aes(NumCompaniesWorked,n,fill=factor(Attrition),label=n))+geom_bar(stat="identity",position=position_dodge())+theme_few()+theme(legend.position="bottom",plot.title=element_text(hjust=0.5,size=16))+labs(x="Number of Companies",y="Count",title="Number of Companies worked")+coord_cartesian(xlim=c(0,9))+scale_x_continuous(breaks=seq(0,9,1))
+```
+
+
+###Observation : We see people worked at least 1 company switch mostly and equal ratio for rest with low rates
+####Conclusion: Higher experince or switch lesser ittration rate 
+
+##42 Swtiching is over adventegious or not ?
+
+```{r}
+ggplot(myds,aes(TotalWorkingYears,MonthlyIncome,size=NumCompaniesWorked,col=factor(Attrition)))+geom_point(alpha=0.5)+geom_jitter(width=0.04)+theme_few()+theme(plot.title=element_text(hjust=0.5,size=16),legend.position="bottom")+labs(x="Experience",y="MonthlySalary",title="Is switching over advantï..Ageous?",col="Attrition")+geom_smooth(method="lm")
+```
+
+```{r}
+g1=ggplot(myds,aes(Attrition,TotalWorkingYears,fill=factor(Attrition)))+geom_boxplot()+theme(legend.position="bottom",plot.title=element_text(hjust=0.5))+labs(x="Attrition",y="Years of Experience",title="Attrition trend with number of years of experience")+coord_flip()
+```
+
+```{r}
+g2=myds %>% filter(Attrition=="Yes") %>% ggplot(aes(TotalWorkingYears,..count..,fill=factor(Attrition)))+geom_histogram(binwidth=5,alpha=0.8,fill="Black")+labs(x="Years of Experience",y="Count",title="Histogram of Years of experience",subtitle="Attrition=Yes")+theme_few()+theme(plot.title=element_text(hjust=0.5),plot.subtitle=element_text(hjust=0.3))
+```
+
+```{r}
+g3=myds %>% filter(Attrition=="No") %>% ggplot(aes(TotalWorkingYears,..count..,fill=factor(Attrition)))+geom_histogram(binwidth=5,alpha=0.8,fill="Green4")+labs(x="Years of Experience",y="Count",title="Histogram of Years of experience",subtitle="Attrition=No")+theme_few()+theme(plot.title=element_text(hjust=0.5),plot.subtitle=element_text(hjust=0.3))
+```
+
+```{r}
+grid.arrange(g1,g2,g3,nrow=3)
+```
+
+#### Boxplot and histogram shows that there is a siginificant difference between the number of experience with attrition levels.
+####It is noted that people with less than 10 years of experience prefer to jump to another company whereas after that the jump drops.
+#### The histgram for both the attrition levels is right skewed.
+
+##43 plot a scatter plot for years of experience vs monthly salary and see the correlation
+####geom_smooth,geom_point
+```{r}
+ggplot(myds,aes(TotalWorkingYears,MonthlyIncome,size=MonthlyIncome,col=factor(Attrition)))+geom_point(alpha=0.4)+theme_few()+theme(plot.title=element_text(hjust=0.5,size=16),legend.position="bottom")+labs(x="Experience",y="MonthlyIncome",title="YearsofExp Vs MonthlyIncome",col="Attrition")+geom_smooth(method="lm")
+```
+
+####As expected,there exists a linear relationship between years of experience and monthly income as shown by the line.
+####There is a point in the graph,where the lines seems to intersect after which the no attrition line has higher monthly income compared to yes attrition line.
+
+##44 Analsysis on Specific role based tenure duration
+```{r}
+ggplot(myds,aes(YearsAtCompany,YearsInCurrentRole,col=factor(JobRole),size=YearsInCurrentRole))+geom_point(alpha=0.5)+theme(legend.position="bottom",plot.title=element_text(hjust=0.5,size=16))+labs(title="Years in Company Vs Role",col="Job Role")
+```
+
+##45 we see direct relation in these tw variables 
+
+####Working under same manï..Ager causes attrition 
+```{r}
+ggplot(myds,aes(YearsAtCompany,YearsWithCurrManager,col=factor(Attrition),size=YearsAtCompany))+geom_point(alpha=0.5)+theme(legend.position="bottom",plot.title=element_text(hjust=0.5,size=16))+labs(title="Does working with same manï..Ager cause attrition?",col="Attrition")
+```
+
+
+####Observation: We get no clear relation as its scattered 
+##46 Attrition Vs Categorical Variables:
+```{r}
+temp4 = myds %>% mutate(JobInvolvement=factor(JobInvolvement)) %>% mutate(JobInvolvement=fct_recode(JobInvolvement,"Low"="1","Medium"="2","High"="3","Very High"="4"))
+round((prop.table(table(temp$JobInvolvement)))*100,2)
+```
+
+####59 % have high job involvement whereas 25 % have medium involvement in the job.Let us check how this relates to attrition.
+
+##47 ggplotting for Job Involvement vs Attrition Rates
+
+```{r}
+ggplot(temp,aes(x=JobInvolvement,group=Attrition))+geom_bar(stat="count",aes(y=..prop..,fill=factor(..x..)))+labs(x="Job Involvement",y="Percentï..Age",title="Job Involvement Vs Attrition Rates")+facet_wrap(~Attrition)+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=14))+geom_text(aes(label=scales::percent(..prop..),y=..prop..),stat="count",vjust=-0.5)
+```
+
+
+
+####People with high job involvement have higher attrition rates followed by medium involvement people.But,equal number of percentï..Age of people have also shown no attrition rates.
+
+###48Job Satisfaction 
+####Creating subsets with temp name 
+```{r}
+temp5 = myds %>% mutate(JobSatisfaction=factor(JobSatisfaction)) %>% mutate(JobSatisfaction=fct_recode(JobSatisfaction,"Low"="1","Medium"="2","High"="3","Very High"="4"))
+```
+
+
+```{r}
+ggplot(temp,aes(x=JobSatisfaction,group=Attrition))+geom_bar(stat="count",aes(y=..prop..,fill=factor(..x..)))+labs(x="Job Satisfaction",y="Percentï..Age",title="Job Satisfaction Vs Attrition Rates")+facet_wrap(~Attrition)+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=14))+geom_text(aes(label=scales::percent(..prop..),y=..prop..),stat="count",vjust=-0.5)
+```
+
+####Clearly its visible Job Satisfaction play important vaiarable role in understanding 
+####out of those who leave about 30.8 %  have experience high job satisfaction.Therefore,there should be some other factor which triggers their exit from the present company.
+
+##49 Performance Rating:
+```{r}
+temp6 = myds %>% mutate(PerformanceRating=factor(PerformanceRating)) %>% mutate(PerformanceRating=fct_recode(PerformanceRating,"Excellent"="3","Outstanding"="4"))
+```
+
+```{r}
+ggplot(temp,aes(x=PerformanceRating,group=Attrition))+geom_bar(stat="count",aes(y=..prop..,fill=factor(..x..)))+labs(x="PerformanceRating",y="Percentï..Age",title="Performance Rating Vs Attrition Rates")+facet_wrap(~Attrition)+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=14))+geom_text(aes(label=scales::percent(..prop..),y=..prop..),stat="count",vjust=-0.5)
+```
+
+
+####Variable rating for low = 1, gppd = 2 is not aviable in set 
+#### Observation: Same percentï..Age which shows no impact of it. 
+
+##50 Relationship Satisfaction:
+```{r}
+temp= myds%>% mutate(RelationshipSatisfaction=factor(RelationshipSatisfaction)) %>% mutate(RelationshipSatisfaction=fct_recode(RelationshipSatisfaction,"Low"="1","Medium"="2","High"="3","Very High"="4"))
+```
+
+```{r}
+ggplot(temp,aes(x=RelationshipSatisfaction,group=Attrition))+geom_bar(stat="count",aes(y=..prop..,fill=factor(..x..)))+labs(x="RelationshipSatisfaction",y="Percentï..Age",title="RelationshipSatisfaction Vs Attrition Rates")+facet_wrap(~Attrition)+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=14))+geom_text(aes(label=scales::percent(..prop..),y=..prop..),stat="count",vjust=-0.5)
+```
+
+
+####In this too,we find that almost 57 % (combining high and very high) experience attrition whereas similar percentï..Age have also stayed within the company.
+
+##51 Worklife balance:
+```{r}
+temp7 = myds %>% mutate(WorkLifeBalance=factor(WorkLifeBalance)) %>% mutate(WorkLifeBalance=fct_recode(WorkLifeBalance,"Bad"="1","Good"="2","Better"="3","Best"="4"))
+```
+
+```{r}
+ggplot(temp,aes(x=WorkLifeBalance,group=Attrition))+geom_bar(stat="count",aes(y=..prop..,fill=factor(..x..)))+labs(x="WorkLifeBalance",y="Percentï..Age",title="Worklifebalance Vs Attrition Rates")+facet_wrap(~Attrition)+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=14))+geom_text(aes(label=scales::percent(..prop..),y=..prop..),stat="count",vjust=-0.5)
+```
+
+
+####in this also we do not find any major conlusion 
+
+
+##42 Environment Satisfaction:
+```{r}
+temp8 = myds %>% mutate(EnvironmentSatisfaction=factor(EnvironmentSatisfaction)) %>% mutate(EnvironmentSatisfaction=fct_recode(EnvironmentSatisfaction,"Low"="1","Medium"="2","High"="3","Very High"="4"))
+```
+
+```{r}
+ggplot(temp,aes(x=EnvironmentSatisfaction,group=Attrition))+geom_bar(stat="count",aes(y=..prop..,fill=factor(..x..)))+labs(x="EnvironmentSatisfaction",y="Percentï..Age",title="Environment satisfaction Vs Attrition Rates")+facet_wrap(~Attrition)+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=14))+geom_text(aes(label=scales::percent(..prop..),y=..prop..),stat="count",vjust=-0.5)
+```
+
+
+
+#### Here we see that people having low environment satisfaction ( 30.4%) leave the company.
+
+##53. Attrition Vs OverTime:
+```{r}
+ggplot(myds,aes(x=OverTime,group=Attrition))+geom_bar(stat="count",aes(y=..prop..,fill=factor(..x..)))+labs(x="Overtime",y="Percentï..Age",title="Overtime Vs Attrition Rates")+facet_wrap(~Attrition)+theme_few()+theme(legend.position="none",plot.title=element_text(hjust=0.5,size=14))+geom_text(aes(label=scales::percent(..prop..),y=..prop..),stat="count",vjust=-0.5)
+```
+
+
+####53 % of those who experience attrition have worked overtime whereas 76 % of those who have not experienced overtime have not left the company.Therefore overtime is a strong indicator of attrition.
+
+
+##54. Attrition VS Training times last year
+```{r}
+t.test(myds$TrainingTimesLastYear~myds$Attrition)
+```
+
+####As p-value is less than alpha, attrition rate depends on trainings.
+
+##55. Attrition VS Work/Life Balance
+```{r}
+table_balance<-table(myds$WorkLifeBalance, myds$Attrition)
+chisq.test(table_balance)
+```
+
+####Attrition is dependent on Work/Life balance because p-value is less than alpha.
+
+
+
+
